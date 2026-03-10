@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, FlatList, ActivityIndicator, StyleSheet, Text } from 'react-native';
+import { View, FlatList, ActivityIndicator, StyleSheet, Text, RefreshControl } from 'react-native';
 import apiClient from '../services/api.service';
 import { DisneyCharacter, ApiResponse } from '../types/api.types';
 import SearchBar from '../components/SearchBar';
@@ -17,6 +17,7 @@ export default function ListScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [isFetchingMore, setIsFetchingMore] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Fonction d'appel API
   const fetchCharacters = async (pageNumber: number, query: string) => {
@@ -54,11 +55,18 @@ export default function ListScreen({ navigation }: Props) {
 
   // Logique du Scroll Infini
   const loadMore = () => {
-    if (!loading && !isFetchingMore) {
+    if (!loading && !isFetchingMore && !isRefreshing) {
       const nextPage = page + 1;
       setPage(nextPage);
       fetchCharacters(nextPage, searchQuery);
     }
+  };
+
+  const onRefresh = async () => {
+    setIsRefreshing(true);
+    setPage(1);
+    await fetchCharacters(1, searchQuery);
+    setIsRefreshing(false);
   };
 
   const handleSearch = useCallback((query: string) => {
@@ -69,12 +77,11 @@ export default function ListScreen({ navigation }: Props) {
     <View style={styles.container}>
       <SearchBar onSearch={handleSearch} />
 
-      {loading ? (
+      {loading && page === 1 && !isRefreshing ? (
         <ActivityIndicator size="large" color="#0000ff" style={styles.loader} />
       ) : (
         <FlatList
           data={characters}
-          // On s'assure de l'unicité de la clé, parfois la Disney API a des doublons accidentels d'ID
           keyExtractor={(item, index) => `${item._id}-${index}`}
           renderItem={({ item }) => (
             <Card
@@ -86,6 +93,9 @@ export default function ListScreen({ navigation }: Props) {
           onEndReachedThreshold={0.5}
           ListFooterComponent={isFetchingMore ? <ActivityIndicator style={styles.footerLoader} /> : null}
           ListEmptyComponent={<Text style={styles.emptyText}>Aucun personnage trouvé.</Text>}
+          refreshControl={
+            <RefreshControl refreshing={isRefreshing} onRefresh={onRefresh} />
+          }
         />
       )}
     </View>

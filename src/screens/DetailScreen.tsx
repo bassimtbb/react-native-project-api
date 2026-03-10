@@ -1,66 +1,80 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, Image, ActivityIndicator, StyleSheet, ScrollView } from "react-native";
-import apiClient from "../services/api.service";
-import { DisneyCharacter, ApiResponse } from "../types/api.types";
+import React, { useEffect, useState } from 'react';
+import { ScrollView, View, Text, Image, ActivityIndicator, StyleSheet } from 'react-native';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types/navigation.types';
+import { DisneyCharacter } from '../types/api.types';
+import { getCharacterById } from '../services/api.service';
 
-export default function DetailScreen({ route }: any) {
-  const { id } = route.params;
+type Props = NativeStackScreenProps<RootStackParamList, 'Detail'>;
 
+const DetailScreen: React.FC<Props> = ({ route }) => {
+  const { id } = route.params; // Récupération de l'ID 
   const [character, setCharacter] = useState<DisneyCharacter | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const fetchCharacter = async () => {
+    const fetchDetail = async () => {
       try {
-        const response = await apiClient.get<ApiResponse<DisneyCharacter>>(`/character/${id}`);
-        setCharacter(response.data.data[0]); // L’API Disney renvoie "data"
+        const data = await getCharacterById(id);
+        // L'API Disney renvoie parfois les données sous forme de tableau ou d'objet direct
+        // Gérer le cas où if getCharacterById return array or object
+        setCharacter(Array.isArray(data) ? data[0] : data);
       } catch (error) {
-        console.error(error);
+        console.error("Erreur détails:", error);
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
-    fetchCharacter();
+    fetchDetail();
   }, [id]);
 
-  if (loading) return <ActivityIndicator size="large" style={{ marginTop: 50 }} />;
-
-  if (!character) return <Text style={{ marginTop: 50 }}>Personnage introuvable</Text>;
+  if (isLoading) return <ActivityIndicator style={styles.loader} size="large" />;
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Image source={{ uri: character.imageUrl }} style={styles.image} />
-      <Text style={styles.name}>{character.name}</Text>
+    <ScrollView style={styles.container}>
+      {character ? (
+        <>
+          <Image source={{ uri: character.imageUrl }} style={styles.image} />
+          <View style={styles.content}>
+            <Text style={styles.name}>{character.name}</Text>
 
-      <Text style={styles.section}>Films :</Text>
-      {character.films.map((film, idx) => (
-        <Text key={idx}>{film}</Text>
-      ))}
+            <Text style={styles.sectionTitle}>Films :</Text>
+            {character.films && character.films.length > 0 ? (
+              character.films.map((film, index) => (
+                <Text key={index} style={styles.item}>• {film}</Text>
+              ))
+            ) : (
+              <Text style={styles.none}>Aucun film répertorié</Text>
+            )}
 
-      <Text style={styles.section}>Short Films :</Text>
-      {character.shortFilms.map((film, idx) => (
-        <Text key={idx}>{film}</Text>
-      ))}
-
-      <Text style={styles.section}>TV Shows :</Text>
-      {character.tvShows.map((show, idx) => (
-        <Text key={idx}>{show}</Text>
-      ))}
-
-      <Text style={styles.section}>Video Games :</Text>
-      {character.videoGames.map((game, idx) => (
-        <Text key={idx}>{game}</Text>
-      ))}
-
-      <Text style={styles.section}>Source :</Text>
-      <Text>{character.sourceUrl}</Text>
+            <Text style={styles.sectionTitle}>Séries TV :</Text>
+            {character.tvShows && character.tvShows.length > 0 ? (
+              character.tvShows.map((show, index) => (
+                <Text key={index} style={styles.item}>• {show}</Text>
+              ))
+            ) : (
+              <Text style={styles.none}>Aucune série répertoriée</Text>
+            )}
+          </View>
+        </>
+      ) : (
+        <View style={styles.content}>
+          <Text style={styles.none}>Personnage non trouvé.</Text>
+        </View>
+      )}
     </ScrollView>
   );
-}
+};
 
 const styles = StyleSheet.create({
-  container: { padding: 20 },
-  image: { width: 200, height: 200, alignSelf: "center" },
-  name: { fontSize: 24, fontWeight: "bold", marginVertical: 10 },
-  section: { marginTop: 10, fontWeight: "bold" },
+  container: { flex: 1, backgroundColor: '#fff' },
+  image: { width: '100%', height: 400, resizeMode: 'cover' },
+  content: { padding: 20 },
+  name: { fontSize: 28, fontWeight: 'bold', marginBottom: 20, color: '#1A1A2E' },
+  sectionTitle: { fontSize: 18, fontWeight: '700', marginTop: 15, color: '#4F46E5' },
+  item: { fontSize: 16, marginTop: 5, color: '#555' },
+  none: { fontStyle: 'italic', color: '#999', marginTop: 5 },
+  loader: { flex: 1, justifyContent: 'center' }
 });
+
+export default DetailScreen;

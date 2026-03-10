@@ -25,4 +25,9 @@ apiClient.interceptors.response.use(
     }
 );
 
+export const getCharacterById = async (id: number) => {
+    const response = await apiClient.get(`/character/${id}`);
+    return response.data.data;
+};
+
 export default apiClient;

@@ -55,11 +55,11 @@ export default function ListScreen({ navigation }: Props) {
 
   // Logique du Scroll Infini
   const loadMore = () => {
-    if (!loading && !isFetchingMore && !isRefreshing) {
-      const nextPage = page + 1;
-      setPage(nextPage);
-      fetchCharacters(nextPage, searchQuery);
-    }
+    if (loading || isFetchingMore || isRefreshing) return; // Sécurité : Ne fait rien si on charge déjà
+
+    const nextPage = page + 1;
+    setPage(nextPage);
+    fetchCharacters(nextPage, searchQuery);
   };
 
   const onRefresh = async () => {
